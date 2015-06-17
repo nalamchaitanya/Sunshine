@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Sunshine</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="title_activity_detail">DetailActivity</string>
+    <string name="action_location">Map</string>
+    <string name="action_share">Share</string>
+    <string name="google_maps_key">AIzaSyDz5fbnsa6NGZz_V_oGpzBBjk4swo1SGHw</string>
+    <string name="title_activity_map">Map</string>
+    <string name="pref_imei_key">imei</string>
+    <string name="pref_imei_label">IMEI</string>
+    <string name="pref_imei_default">353327064267933</string>
+
+</resources>
