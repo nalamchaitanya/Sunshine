@@ -212,7 +212,10 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback{
             /*String directionsUrl = getDirectionsUrl(resultStrs);
             PlotRoute plotRoute = new PlotRoute();
             plotRoute.execute(directionsUrl);*/
-            PolylineOptions rectOptions = new PolylineOptions()
+            String snapToRoadsUrl = getSnapToRoadsUrl(resultStrs);
+            SnapToRoad snapToRoad = new SnapToRoad();
+            snapToRoad.execute(snapToRoadsUrl);
+            /*PolylineOptions rectOptions = new PolylineOptions()
                     .color(Color.BLUE)
                     .width(2)
                     .geodesic(true);
@@ -220,9 +223,133 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback{
                 rectOptions.add(new LatLng(iter.Lat,iter.Long));
 
             Polyline polyline = mMap.addPolyline(rectOptions);
-
+*/
         }
 
+        private class SnapToRoad extends AsyncTask<String,Void,String>
+        {
+
+            @Override
+            protected String doInBackground(String... params)
+            {
+                if(params.length==0)
+                    return null;
+
+                HttpURLConnection connection = null;
+                BufferedReader bufferedReader = null;
+                String route = "";
+
+                try
+                {
+                    URL url = new URL(params[0]);
+                    connection = (HttpURLConnection)url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.connect();
+
+                    InputStream inputStream = connection.getInputStream();
+                    if(inputStream == null)
+                        return null;
+                    StringBuffer buffer = new StringBuffer();
+                    bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+
+                    String line ;
+                    while ((line=bufferedReader.readLine())!=null)
+                        buffer.append(line+"\n");
+                    if(buffer.length()==0)
+                        return null;
+                    route = buffer.toString();
+                    String temp = route.trim();
+                    //Log.v(LogTag,"Route uri built is"+temp);
+                    return temp;
+                }
+                catch (IOException e)
+                {
+                    Log.e(LogTag, "Error", e);
+                    return null;
+                }
+                finally
+                {
+                    if (connection != null)
+                        connection.disconnect();
+                    if (bufferedReader != null)
+                        try {
+                            bufferedReader.close();
+                        } catch (IOException e) {
+                            Log.e(LogTag, "Error in Closing Stream", e);
+                        }
+                }
+            }
+
+            @Override
+            protected void onPostExecute(String route)
+            {
+                new ParseSnapRoad().execute(route);
+            }
+
+            private class ParseSnapRoad extends AsyncTask<String,Void,ArrayList<LatLng>>
+            {
+
+                @Override
+                protected ArrayList<LatLng> doInBackground(String... jsonData)
+                {
+                    if(jsonData.length==0)
+                        return null;
+                    JSONObject object = null;
+                    JSONArray listOfPoints = null;
+                    ArrayList<LatLng> listOfLatLng = new ArrayList<LatLng>();
+                    try
+                    {
+                        object = new JSONObject(jsonData[0]);
+                        listOfPoints = object.getJSONArray("snappedPoints");
+                        for(int i =0;i<listOfPoints.length();i++)
+                        {
+                            JSONObject location = listOfPoints.getJSONObject(i);
+                            JSONObject ll = location.getJSONObject("location");
+                            listOfLatLng.add(new LatLng(ll.getDouble("latitude"),ll.getDouble("longitude")));
+                        }
+                    }
+                    catch (JSONException e)
+                    {
+                        e.printStackTrace();
+                    }
+                    return listOfLatLng;
+                }
+
+                @Override
+                protected void onPostExecute(ArrayList<LatLng> finalPoints)
+                {
+                    PolylineOptions rectOptions = new PolylineOptions()
+                            .color(Color.BLUE)
+                            .width(2)
+                            .geodesic(true);
+                    rectOptions.addAll(finalPoints);
+                    Polyline polyline = mMap.addPolyline(rectOptions);
+                }
+            }
+        }
+        private String getSnapToRoadsUrl(ArrayList<LatLong> resultStrs)
+        {
+            int len = resultStrs.size();
+            int breaks = len/100;
+            String baseUrl = "https://roads.googleapis.com/v1/snapToRoads";
+            String strIter ;
+            LatLong llIter;
+            String pathParam = "path=";
+            for(int i = 0;i<99;i++)
+            {
+                llIter = resultStrs.get(i);
+                strIter = llIter.Lat+","+llIter.Long+"|";
+                pathParam+=strIter;
+            }
+            llIter = resultStrs.get(len-1);
+            strIter = llIter.Lat+","+llIter.Long;
+            pathParam+=strIter;
+            String interpolateParam = "interpolate=true";
+            String keyParam = "key="+getString(R.string.google_maps_key);
+
+            String url = baseUrl + "?" + pathParam + "&" + interpolateParam + "&" + keyParam;
+            return url;
+        }
         private ArrayList<LatLong> getLocationDataFromJson(String trackJsonStr, int numInstants)
                 throws JSONException
         {
